@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/kanopeld/go-socket"
+	// "strconv"
 )
 
 // NewServer initializes a server that just broadcasts all events
@@ -29,6 +30,24 @@ func NewServer(port string) (*socket.Server, error) {
 		}
 		c.On(socket.DISCONNECTION_NAME, onExit)
 		c.On(ExitPlayer, onExit)
+		c.On(EnterGame, func(data []byte) {
+			ID, nickname := ExtractChangeName(string(data))
+			players.Add(ID, nickname)
+			c.Broadcast(EnterGame, data)
+			
+			// mimi send total local player to new player
+			for ID, p := range players {
+				c.Emit(EnterGame, ID+":"+p.Nickname)
+			}
+		})
+		c.On(Progress, func(data []byte) {
+			ID, progress := ExtractProgress(string(data))
+			players[ID].Progress = progress
+			c.Broadcast(Progress, data)
+			// for ID, p := range players {
+			// 	c.Emit(EnterGame, ID+":"+strconv.Itoa(p.Progress))
+			// }
+		})
 	})
 
 	go s.Start()

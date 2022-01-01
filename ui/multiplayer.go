@@ -5,6 +5,11 @@ import (
 	"github.com/rivo/tview"
 	"github.com/shilangyu/typer-go/game"
 	"github.com/shilangyu/typer-go/utils"
+	"github.com/gdamore/tcell"
+	// "log"
+	"strconv"
+	"fmt"
+	"time"
 )
 
 type setup struct {
@@ -18,6 +23,8 @@ type setup struct {
 // CreateMultiplayerSetup creates multiplayer room
 func CreateMultiplayerSetup(app *tview.Application) error {
 	IP, _ := utils.IPv4()
+	// mimi local
+	IP = "127.0.0.1"
 	setup := setup{IP, "", "9001", true, nil, nil}
 
 	formWi := tview.NewForm().
@@ -63,7 +70,6 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 			roomWi.SetText(ps)
 		})
 	}
-
 	setup.Client.On(socket.CONNECTION_NAME, func(ccc socket.Client) {
 		setup.Client.On(game.ChangeName, func(payload string) {
 			ID, nickname := game.ExtractChangeName(payload)
@@ -76,6 +82,7 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 			renderRoom()
 		})
 		setup.Client.Emit(game.ChangeName, setup.Client.ID()+":"+setup.Nickname)
+		// [mimi]: local players : add yourself
 		players[setup.Client.ID()] = &game.Player{Nickname: setup.Nickname}
 		renderRoom()
 	})
@@ -90,6 +97,9 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 		}).
 		AddButton("BACK", func() {
 			utils.Check(CreateMultiplayerSetup(app))
+		}).
+		AddButton("Enter", func() {
+			utils.Check(CreateMultiplayer(app, setup))
 		})
 
 	layout := tview.NewFlex().
@@ -110,7 +120,179 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 	return nil
 }
 
-// // CreateMultiplayer creates multiplayer screen widgets
+func CreateMultiplayer(app *tview.Application, setup setup) error {
+	
+	// [TODO] : socket
+	text, err := game.ChooseText()
+	if err != nil {
+		return err
+	}	
+
+	state := game.NewState(text)
+
+	players := make(game.Players)
+
+	statsWis := [...]*tview.TextView{
+		tview.NewTextView().SetText("wpm: 0"),
+		tview.NewTextView().SetText("time: 0s"),
+		tview.NewTextView().SetText("Player numeber: 0"),
+		tview.NewTextView().SetText("CntDown: 10s"), // count down clock
+		tview.NewTextView().SetText(""), // players list
+	}
+
+	renderPlayers := func() {
+		// log.Println(len(players))
+		ps := ""
+		for _, p := range players {
+			ps += p.Nickname + ": " + strconv.Itoa(p.Progress) + "%\n"
+			// ps += fmt.Sprintf("%s: 0\n", p.Nickname)
+		}
+		app.QueueUpdateDraw(func() {
+			statsWis[2].SetText(fmt.Sprintf("Num: %d", len(players)))
+			statsWis[4].SetText(ps)
+		})
+	}
+
+	startGame := func() {
+		// start game
+		if state.StartTime.IsZero() {
+			state.Start()
+			setup.Client.On(game.Progress, func(payload string) {
+				ID, progress := game.ExtractProgress(payload)
+				players[ID].Progress = progress
+				renderPlayers()
+			})
+			go func() {
+				ticker := time.NewTicker(100 * time.Millisecond)
+				for range ticker.C {
+					if state.CurrWord == len(state.Words) {
+						ticker.Stop()
+						return
+					}
+					app.QueueUpdateDraw(func() {
+						statsWis[0].SetText(fmt.Sprintf("wpm: %.0f", state.Wpm()))
+						statsWis[1].SetText(fmt.Sprintf("time: %.02fs", time.Since(state.StartTime).Seconds()))
+					})
+					
+					// broadcast progress
+					setup.Client.Emit(game.Progress, setup.Client.ID()+":"+strconv.Itoa(int(state.Progress())))
+					players[setup.Client.ID()].Progress = int(state.Progress())
+					renderPlayers()
+				}
+			}()
+		}
+	}
+
+	setup.Client.On(game.EnterGame, func(payload string) {
+		ID, nickname := game.ExtractChangeName(payload)
+		players.Add(ID, nickname)
+		renderPlayers()
+		// check player number
+		if (len(players) >= 2) {
+			if state.StartCountDownTime.IsZero() {
+				state.StartCountDownTime = time.Now()
+				go func() {
+					ticker_cnt := time.NewTicker(1000 * time.Millisecond)
+					for range ticker_cnt.C {
+						if int(time.Since(state.StartCountDownTime).Seconds()) > 10 { // start game
+							ticker_cnt.Stop()
+							startGame()
+							return
+						}
+						app.QueueUpdateDraw(func() {
+							statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10 - int(time.Since(state.StartCountDownTime).Seconds())))
+						})
+					}
+				}()
+			}
+		}
+	})
+
+	setup.Client.Emit(game.EnterGame, setup.Client.ID()+":"+setup.Nickname)
+	players[setup.Client.ID()] = &game.Player{Nickname: setup.Nickname}
+	renderPlayers()
+
+	pages := tview.NewPages().
+		AddPage("modal", tview.NewModal().
+			SetText("Play again?").
+			SetBackgroundColor(tcell.ColorDefault).
+			AddButtons([]string{"yes", "exit"}).
+			SetDoneFunc(func(index int, label string) {
+				switch index {
+				case 0:
+					utils.Check(CreateSingleplayer(app))
+				case 1:
+					utils.Check(CreateWelcome(app))
+				}
+			}), false, false)
+	
+	var textWis []*tview.TextView
+	for _, word := range state.Words {
+		textWis = append(textWis, tview.NewTextView().SetText(word).SetDynamicColors(true))
+	}
+
+	currInput := ""
+	inputWi := tview.NewInputField().
+		SetFieldBackgroundColor(tcell.ColorDefault)
+	inputWi.
+		SetChangedFunc(func(text string) {
+
+			if len(currInput) < len(text) {
+				if len(text) > len(state.Words[state.CurrWord]) || state.Words[state.CurrWord][len(text)-1] != text[len(text)-1] {
+					state.IncError()
+				}
+			}
+
+			app.QueueUpdateDraw(func(i int) func() {
+				return func() {
+					textWis[i].SetText(paintDiff(state.Words[i], text))
+				}
+			}(state.CurrWord))
+
+			if text == state.Words[state.CurrWord] {
+				state.NextWord()
+				if state.CurrWord == len(state.Words) {
+					state.End()
+					pages.ShowPage("modal")
+				} else {
+					inputWi.SetText("")
+				}
+			}
+
+			currInput = text
+		})
+
+	// mimi layout design 
+	layout := tview.NewFlex()
+	statsFrame := tview.NewFlex().SetDirection(tview.FlexRow)
+	statsFrame.SetBorder(true).SetBorderPadding(1, 1, 1, 1).SetTitle("STATS")
+	for _, statsWi := range statsWis {
+		// statsFrame.AddItem(statsWi, 1, 1, false)
+		// mimi flexible
+		statsFrame.AddItem(statsWi, 0, 1, false)
+	}
+	layout.AddItem(statsFrame, 0, 1, false)
+
+	secondColumn := tview.NewFlex().SetDirection(tview.FlexRow)
+	textsLayout := tview.NewFlex()
+	for _, textWi := range textWis {
+		textsLayout.AddItem(textWi, len(textWi.GetText(true)), 1, false)
+	}
+	textsLayout.SetBorder(true)
+	secondColumn.AddItem(textsLayout, 0, 3, false)
+	inputWi.SetBorder(true)
+	secondColumn.AddItem(inputWi, 0, 1, true)
+	layout.AddItem(secondColumn, 0, 3, true)
+
+	pages.AddPage("game", layout, true, true).SendToBack("game")
+	app.SetRoot(pages, true)
+
+	keybindings(app, CreateWelcome)
+	return nil
+
+}
+
+// CreateMultiplayer creates multiplayer screen widgets
 // func CreateMultiplayer(g *gocui.Gui) error {
 // 	text, err := game.ChooseText()
 // 	if err != nil {
@@ -250,3 +432,5 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 
 // 	return nil //keybindings(g, CreateMultiplayerSetup)
 // }
+
+// rewrite multiplayer

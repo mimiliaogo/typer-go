@@ -18,6 +18,8 @@ const (
 	// Progress is for indicating typing progress
 	// payload = ID:%
 	Progress = "progress"
+	// [mimi] enter game room
+	EnterGame = "enter-game"
 )
 
 // Events is an array of all available events
@@ -48,5 +50,5 @@ func ExtractStartGame(payload string) (unixTimestamp int64) {
 func ExtractProgress(payload string) (ID string, progress int) {
 	ID, p := split(payload)
 	progress, _ = strconv.Atoi(p)
-	return
+	return ID, progress
 }

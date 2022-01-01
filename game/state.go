@@ -15,6 +15,8 @@ type State struct {
 	Words []string
 	// StartTime is a timestamp of the first keystroke
 	StartTime time.Time
+	// StartCountDown is a timestamp of the countdown 
+	StartCountDownTime time.Time
 	// properties concerning current word
 	wordStart  time.Time
 	wordErrors int
@@ -51,7 +53,7 @@ func (s State) Wpm() float64 {
 
 // Progress returns a float in the (0;1) range represending the progress made
 func (s State) Progress() float64 {
-	return float64(s.CurrWord) / float64(len(s.Words))
+	return float64(s.CurrWord) / float64(len(s.Words)) * 100
 }
 
 // IncError increments the error count

@@ -2,5 +2,5 @@ package game
 
 // TyperTexts are a set of default typing texts
 const TyperTexts string = `
-im typing something
+Have you ever started to tell a joke only to forget
 `
