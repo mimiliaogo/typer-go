@@ -15,8 +15,10 @@ type State struct {
 	Words []string
 	// StartTime is a timestamp of the first keystroke
 	StartTime time.Time
-	// StartCountDown is a timestamp of the countdown 
+	// [mimi] StartCountDown is a timestamp of the countdown 
 	StartCountDownTime time.Time
+	// [mimi] whether the game ends
+	EndGame bool
 	// properties concerning current word
 	wordStart  time.Time
 	wordErrors int
@@ -44,6 +46,8 @@ func (s *State) Start() {
 func (s *State) End() {
 	stats.AddHistory(s.Wpm())
 	stats.Save()
+	// mimi
+	s.EndGame = true
 }
 
 // Wpm is the words per minute

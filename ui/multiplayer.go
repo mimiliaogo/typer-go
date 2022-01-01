@@ -143,6 +143,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 	renderPlayers := func() {
 		// log.Println(len(players))
 		ps := ""
+		// TODO: sort players by progress 
 		for _, p := range players {
 			ps += p.Nickname + ": " + strconv.Itoa(p.Progress) + "%\n"
 			// ps += fmt.Sprintf("%s: 0\n", p.Nickname)
@@ -236,30 +237,32 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		SetFieldBackgroundColor(tcell.ColorDefault)
 	inputWi.
 		SetChangedFunc(func(text string) {
-
-			if len(currInput) < len(text) {
-				if len(text) > len(state.Words[state.CurrWord]) || state.Words[state.CurrWord][len(text)-1] != text[len(text)-1] {
-					state.IncError()
+			if !state.StartTime.IsZero() {
+				if len(currInput) < len(text) {
+					if len(text) > len(state.Words[state.CurrWord]) || state.Words[state.CurrWord][len(text)-1] != text[len(text)-1] {
+						state.IncError()
+					}
 				}
+
+				app.QueueUpdateDraw(func(i int) func() {
+					return func() {
+						textWis[i].SetText(paintDiff(state.Words[i], text))
+					}
+				}(state.CurrWord))
+
+				if text == state.Words[state.CurrWord] {
+					state.NextWord()
+					if state.CurrWord == len(state.Words) {
+						state.End()
+
+						pages.ShowPage("modal")
+					} else {
+						inputWi.SetText("")
+					}
+				}
+
+				currInput = text
 			}
-
-			app.QueueUpdateDraw(func(i int) func() {
-				return func() {
-					textWis[i].SetText(paintDiff(state.Words[i], text))
-				}
-			}(state.CurrWord))
-
-			if text == state.Words[state.CurrWord] {
-				state.NextWord()
-				if state.CurrWord == len(state.Words) {
-					state.End()
-					pages.ShowPage("modal")
-				} else {
-					inputWi.SetText("")
-				}
-			}
-
-			currInput = text
 		})
 
 	// mimi layout design 

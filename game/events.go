@@ -20,10 +20,12 @@ const (
 	Progress = "progress"
 	// [mimi] enter game room
 	EnterGame = "enter-game"
+	// [mimi] end game
+	EndGame = "end-game"
 )
 
 // Events is an array of all available events
-var Events = [...]string{ChangeName, ExitPlayer, StartGame, Progress}
+var Events = [...]string{ChangeName, ExitPlayer, StartGame, Progress, EnterGame, EndGame}
 
 func split(s string) (string, string) {
 	ss := strings.SplitN(s, ":", 2)
