@@ -37,6 +37,8 @@ type Player struct {
 	Nickname string
 	// Progress
 	Progress int
+	// WPM
+	WPM int
 }
 
 // Players is a helper for other players

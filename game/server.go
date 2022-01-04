@@ -41,8 +41,9 @@ func NewServer(port string) (*socket.Server, error) {
 			}
 		})
 		c.On(Progress, func(data []byte) {
-			ID, progress := ExtractProgress(string(data))
+			ID, progress, wpm := ExtractProgress(string(data))
 			players[ID].Progress = progress
+			players[ID].WPM = wpm
 			c.Broadcast(Progress, data)
 			// for ID, p := range players {
 			// 	c.Emit(EnterGame, ID+":"+strconv.Itoa(p.Progress))

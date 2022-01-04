@@ -49,8 +49,10 @@ func ExtractStartGame(payload string) (unixTimestamp int64) {
 }
 
 // ExtractProgress takes a payload and gives extracted data
-func ExtractProgress(payload string) (ID string, progress int) {
-	ID, p := split(payload)
+func ExtractProgress(payload string) (ID string, progress int, wpm int) {
+	ss := strings.SplitN(payload, ":", 3)
+	ID, p, w := ss[0], ss[1], ss[2]
 	progress, _ = strconv.Atoi(p)
-	return ID, progress
+	wpm, _ = strconv.Atoi(w)
+	return ID, progress, wpm
 }

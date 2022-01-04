@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"sort"
+
 	"github.com/gdamore/tcell"
 	"github.com/kanopeld/go-socket"
 	"github.com/rivo/tview"
@@ -145,9 +147,18 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		// log.Println(len(players))
 		ps := ""
 		// TODO: sort players by progress
-		for _, p := range players {
+
+		// engine: sort players by name
+		keys := make([]string, 0, len(players))
+		for k := range players {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			p := players[k]
 			ps += p.Nickname + ": " + strconv.Itoa(p.Progress) + "%\n"
-			// ps += fmt.Sprintf("%s: 0\n", p.Nickname)
+
 		}
 		app.QueueUpdateDraw(func() {
 			statsWis[2].SetText(fmt.Sprintf("Num: %d", len(players)))
@@ -160,8 +171,9 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		if state.StartTime.IsZero() {
 			state.Start()
 			setup.Client.On(game.Progress, func(payload string) {
-				ID, progress := game.ExtractProgress(payload)
+				ID, progress, wpm := game.ExtractProgress(payload)
 				players[ID].Progress = progress
+				players[ID].WPM = wpm
 				renderPlayers()
 			})
 			go func() {
@@ -177,8 +189,11 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 					})
 
 					// broadcast progress
-					setup.Client.Emit(game.Progress, setup.Client.ID()+":"+strconv.Itoa(int(state.Progress())))
+					setup.Client.Emit(game.Progress, setup.Client.ID()+
+						":"+strconv.Itoa(int(state.Progress()))+
+						":"+strconv.Itoa(int(state.Wpm())))
 					players[setup.Client.ID()].Progress = int(state.Progress())
+					players[setup.Client.ID()].WPM = int(state.Wpm())
 					renderPlayers()
 				}
 			}()
