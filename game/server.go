@@ -34,7 +34,7 @@ func NewServer(port string) (*socket.Server, error) {
 			ID, nickname := ExtractChangeName(string(data))
 			players.Add(ID, nickname)
 			c.Broadcast(EnterGame, data)
-			
+
 			// mimi send total local player to new player
 			for ID, p := range players {
 				c.Emit(EnterGame, ID+":"+p.Nickname)
