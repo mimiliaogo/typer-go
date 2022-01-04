@@ -1,14 +1,15 @@
 package ui
 
 import (
+	"github.com/gdamore/tcell"
 	"github.com/kanopeld/go-socket"
 	"github.com/rivo/tview"
 	"github.com/shilangyu/typer-go/game"
 	"github.com/shilangyu/typer-go/utils"
-	"github.com/gdamore/tcell"
+
 	// "log"
-	"strconv"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -121,12 +122,12 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 }
 
 func CreateMultiplayer(app *tview.Application, setup setup) error {
-	
+
 	// [TODO] : socket
 	text, err := game.ChooseText()
 	if err != nil {
 		return err
-	}	
+	}
 
 	state := game.NewState(text)
 
@@ -137,13 +138,13 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		tview.NewTextView().SetText("time: 0s"),
 		tview.NewTextView().SetText("Player numeber: 0"),
 		tview.NewTextView().SetText("CntDown: 10s"), // count down clock
-		tview.NewTextView().SetText(""), // players list
+		tview.NewTextView().SetText(""),             // players list
 	}
 
 	renderPlayers := func() {
 		// log.Println(len(players))
 		ps := ""
-		// TODO: sort players by progress 
+		// TODO: sort players by progress
 		for _, p := range players {
 			ps += p.Nickname + ": " + strconv.Itoa(p.Progress) + "%\n"
 			// ps += fmt.Sprintf("%s: 0\n", p.Nickname)
@@ -174,7 +175,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 						statsWis[0].SetText(fmt.Sprintf("wpm: %.0f", state.Wpm()))
 						statsWis[1].SetText(fmt.Sprintf("time: %.02fs", time.Since(state.StartTime).Seconds()))
 					})
-					
+
 					// broadcast progress
 					setup.Client.Emit(game.Progress, setup.Client.ID()+":"+strconv.Itoa(int(state.Progress())))
 					players[setup.Client.ID()].Progress = int(state.Progress())
@@ -189,7 +190,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		players.Add(ID, nickname)
 		renderPlayers()
 		// check player number
-		if (len(players) >= 2) {
+		if len(players) >= 2 {
 			if state.StartCountDownTime.IsZero() {
 				state.StartCountDownTime = time.Now()
 				go func() {
@@ -201,7 +202,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 							return
 						}
 						app.QueueUpdateDraw(func() {
-							statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10 - int(time.Since(state.StartCountDownTime).Seconds())))
+							statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10-int(time.Since(state.StartCountDownTime).Seconds())))
 						})
 					}
 				}()
@@ -226,7 +227,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 					utils.Check(CreateWelcome(app))
 				}
 			}), false, false)
-	
+
 	var textWis []*tview.TextView
 	for _, word := range state.Words {
 		textWis = append(textWis, tview.NewTextView().SetText(word).SetDynamicColors(true))
@@ -265,7 +266,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 			}
 		})
 
-	// mimi layout design 
+	// mimi layout design
 	layout := tview.NewFlex()
 	statsFrame := tview.NewFlex().SetDirection(tview.FlexRow)
 	statsFrame.SetBorder(true).SetBorderPadding(1, 1, 1, 1).SetTitle("STATS")
@@ -294,146 +295,3 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 	return nil
 
 }
-
-// CreateMultiplayer creates multiplayer screen widgets
-// func CreateMultiplayer(g *gocui.Gui) error {
-// 	text, err := game.ChooseText()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	var state *game.State
-// 	if srv != nil {
-// 		srv.State = game.NewState(text)
-// 		state = srv.State
-// 	} else {
-// 		clt.State = game.NewState(text)
-// 		state = clt.State
-// 	}
-
-// 	w, h := g.Size()
-
-// 	statsFrameWi := widgets.NewCollection("multiplayer-stats", "STATS", false, 0, 0, w/5, h)
-
-// 	statWis := []*widgets.Text{
-// 		widgets.NewText("multiplayer-stats-wpm", "wpm: 0  ", false, false, 2, 1),
-// 		widgets.NewText("multiplayer-stats-time", "time: 0s  ", false, false, 2, 2),
-// 	}
-
-// 	textFrameWi := widgets.NewCollection("multiplayer-text", "", false, w/5+1, 0, 4*w/5, 5*h/6+1)
-
-// 	points := []struct{ x, y int }{}
-// 	var textWis []*widgets.Text
-// 	for i, p := range points {
-// 		textWis = append(textWis, widgets.NewText("multiplayer-text-"+strconv.Itoa(i), state.Words[i], false, false, w/5+1+p.x, p.y))
-// 	}
-
-// 	progressWi := widgets.NewText("multiplayer-progress", strings.Repeat(" ", w/5), false, false, 1, h/2)
-// 	updateProgress := func() {
-// 		g.Update(progressWi.ChangeText(strings.Repeat("█", int(math.Floor(state.Progress()*float64(w/5))))))
-// 	}
-
-// 	var inputWi *widgets.Input
-// 	inputWi = widgets.NewInput("multiplayer-input", true, false, w/5+1, h-h/6, w-w/5-1, h/6, func(v *gocui.View, key gocui.Key, ch rune, mod gocui.Modifier) bool {
-// 		if key == gocui.KeyEnter || len(v.Buffer()) == 0 && ch == 0 {
-// 			return false
-// 		}
-
-// 		if state.StartTime.IsZero() {
-// 			state.Start()
-// 			go func() {
-// 				ticker := time.NewTicker(100 * time.Millisecond)
-// 				for range ticker.C {
-// 					if state.CurrWord == len(state.Words) {
-// 						ticker.Stop()
-// 						return
-// 					}
-
-// 					g.Update(func(g *gocui.Gui) error {
-// 						err := statWis[1].ChangeText(
-// 							fmt.Sprintf("time: %.02fs", time.Since(state.StartTime).Seconds()),
-// 						)(g)
-// 						if err != nil {
-// 							return err
-// 						}
-
-// 						err = statWis[0].ChangeText(
-// 							fmt.Sprintf("wpm: %.0f", state.Wpm()),
-// 						)(g)
-// 						if err != nil {
-// 							return err
-// 						}
-
-// 						return nil
-// 					})
-// 				}
-// 			}()
-// 		}
-
-// 		gocui.DefaultEditor.Edit(v, key, ch, mod)
-
-// 		b := v.Buffer()[:len(v.Buffer())-1]
-
-// 		if ch != 0 && (len(b) > len(state.Words[state.CurrWord]) || rune(state.Words[state.CurrWord][len(b)-1]) != ch) {
-// 			state.IncError()
-// 		}
-
-// 		// ansiWord := state.PaintDiff(b)
-
-// 		// g.Update(textWis[state.CurrWord].ChangeText(ansiWord))
-
-// 		if b == state.Words[state.CurrWord] {
-// 			state.NextWord()
-// 			updateProgress()
-// 			if state.CurrWord == len(state.Words) {
-// 				state.End()
-
-// 				var popupWi *widgets.Modal
-// 				popupWi = widgets.NewModal("multiplayer-popup", "The end of the end\n is the end of times who craes", []string{"play", "quit"}, true, w/2, h/2, func(i int) {
-// 					popupWi.Layout(g)
-// 				}, func(i int) {
-// 					switch i {
-// 					case 0:
-// 						// CreateSingleplayer(g)
-// 					case 1:
-// 						// CreateWelcome(g)
-// 					}
-// 				})
-// 				g.Update(func(g *gocui.Gui) error {
-// 					popupWi.Layout(g)
-// 					popupWi.Layout(g)
-// 					g.SetCurrentView("multiplayer-popup")
-// 					g.SetViewOnTop("multiplayer-popup")
-// 					return nil
-// 				})
-
-// 			}
-// 			g.Update(inputWi.ChangeText(""))
-// 		}
-
-// 		return false
-// 	})
-
-// 	var wis []gocui.Manager
-// 	wis = append(wis, statsFrameWi)
-// 	for _, stat := range statWis {
-// 		wis = append(wis, stat)
-// 	}
-// 	wis = append(wis, textFrameWi)
-// 	for _, text := range textWis {
-// 		wis = append(wis, text)
-// 	}
-// 	wis = append(wis, inputWi)
-// 	wis = append(wis, progressWi)
-
-// 	g.SetManager(wis...)
-
-// 	g.Update(func(*gocui.Gui) error {
-// 		g.SetCurrentView("multiplayer-input")
-// 		return nil
-// 	})
-
-// 	return nil //keybindings(g, CreateMultiplayerSetup)
-// }
-
-// rewrite multiplayer
