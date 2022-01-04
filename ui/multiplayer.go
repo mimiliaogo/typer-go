@@ -136,13 +136,14 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 
 	players := make(game.Players)
 
-	statsWis := [...]*tview.TextView{
-		tview.NewTextView().SetText("wpm: 0"),
-		tview.NewTextView().SetText("time: 0s"),
-		tview.NewTextView().SetText("Player numeber: 0"),
-		tview.NewTextView().SetText("CntDown: 10s"), // count down clock
-		tview.NewTextView().SetText(""),             // players list
-	}
+	// statsWis := [...]*tview.TextView{
+	// 	tview.NewTextView().SetText("wpm: 0"),
+	// 	tview.NewTextView().SetText("time: 0s"),
+	// 	tview.NewTextView().SetText("Player numeber: 0"),
+	// 	tview.NewTextView().SetText("CntDown: 10s"), // count down clock
+	// 	tview.NewTextView().SetText(""),             // players list
+	// }
+	stateText := tview.NewTextView().SetText(ascii_waiting)
 
 	// engine: car race animation
 	const carSign = `
@@ -150,7 +151,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 '-O---O--'`
 
 	carWi := tview.NewTextView().SetText(carSign)
-	carWi.SetBorder(true)
+	carWi.SetBorder(false).SetBorderPadding(1, 1, 1, 1)
 
 	renderPlayers := func() {
 		// log.Println(len(players))
@@ -184,8 +185,8 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 			drawtext += strings.Repeat("▔", trackWidth-2)
 		}
 		app.QueueUpdateDraw(func() {
-			statsWis[2].SetText(fmt.Sprintf("Num: %d", len(players)))
-			statsWis[4].SetText(ps)
+			// statsWis[2].SetText(fmt.Sprintf("Num: %d", len(players)))
+			// statsWis[4].SetText(ps)
 			carWi.SetText(drawtext)
 		})
 	}
@@ -208,8 +209,10 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 						return
 					}
 					app.QueueUpdateDraw(func() {
-						statsWis[0].SetText(fmt.Sprintf("wpm: %.0f", state.Wpm()))
-						statsWis[1].SetText(fmt.Sprintf("time: %.02fs", time.Since(state.StartTime).Seconds()))
+						// statsWis[0].SetText(fmt.Sprintf("wpm: %.0f", state.Wpm()))
+						// statsWis[1].SetText(fmt.Sprintf("time: %.02fs", time.Since(state.StartTime).Seconds()))
+						s_time := fmt.Sprintf("%.0f", time.Since(state.StartTime).Seconds())
+						stateText.SetText(string_to_ascii(s_time))
 					})
 
 					// broadcast progress
@@ -241,7 +244,11 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 							return
 						}
 						app.QueueUpdateDraw(func() {
-							statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10-int(time.Since(state.StartCountDownTime).Seconds())))
+							// statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10-int(time.Since(state.StartCountDownTime).Seconds())))
+							cnt := fmt.Sprintf("%d", 10-int(time.Since(state.StartCountDownTime).Seconds()))
+							stateText.SetText(concat_ascii(ascii_countdown, string_to_ascii(cnt)))
+							// stateText.SetText(ascii_countdown)
+							// stateText.SetText(string_to_ascii(cnt))
 						})
 					}
 				}()
@@ -307,14 +314,22 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 
 	// mimi layout design
 	layout := tview.NewFlex()
-	statsFrame := tview.NewFlex().SetDirection(tview.FlexRow)
-	statsFrame.SetBorder(true).SetBorderPadding(1, 1, 1, 1).SetTitle("STATS")
-	for _, statsWi := range statsWis {
-		// statsFrame.AddItem(statsWi, 1, 1, false)
-		// mimi flexible
-		statsFrame.AddItem(statsWi, 0, 1, false)
-	}
-	layout.AddItem(statsFrame, 0, 1, false)
+
+	signW, _ := utils.StringDimensions(ascii_waiting)
+	statsFrame := tview.NewFlex().
+		AddItem(tview.NewBox(), 0, 1, false).
+		AddItem(stateText, signW, 1, true).
+		AddItem(tview.NewBox(), 0, 1, false)
+	statsFrame.SetBorder(true).SetBorderPadding(1, 1, 1, 1) //.SetTitle("STATS")
+	/*
+		statsFrame := tview.NewFlex().SetDirection(tview.FlexRow)
+		statsFrame.SetBorder(true).SetBorderPadding(1, 1, 1, 1).SetTitle("STATS")
+		for _, statsWi := range statsWis {
+			// statsFrame.AddItem(statsWi, 1, 1, false)
+			// mimi flexible
+			statsFrame.AddItem(statsWi, 0, 1, false)
+		}
+	*/
 
 	secondColumn := tview.NewFlex().SetDirection(tview.FlexRow)
 	textsLayout := tview.NewFlex()
@@ -322,11 +337,17 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		textsLayout.AddItem(textWi, len(textWi.GetText(true)), 1, false)
 	}
 	textsLayout.SetBorder(true)
-	secondColumn.AddItem(carWi, 0, 1, false)
-	secondColumn.AddItem(textsLayout, 0, 3, false)
+
+	layout.AddItem(tview.NewBox().SetBorder(false), 0, 1, false) // left margin
+	secondColumn.AddItem(statsFrame, 9, 1, false)
+	secondColumn.AddItem(carWi, 0, 3, false)
+	secondColumn.AddItem(textsLayout, 8, 1, false)
 	inputWi.SetBorder(true)
-	secondColumn.AddItem(inputWi, 0, 1, true)
+	secondColumn.AddItem(inputWi, 3, 1, true)
+	secondColumn.AddItem(tview.NewBox().SetBorder(false), 0, 1, false) // buttom margin
+
 	layout.AddItem(secondColumn, 0, 3, true)
+	layout.AddItem(tview.NewBox().SetBorder(false), 0, 1, false) // right margin
 
 	pages.AddPage("game", layout, true, true).SendToBack("game")
 	app.SetRoot(pages, true)
