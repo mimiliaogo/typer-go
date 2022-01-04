@@ -2,6 +2,7 @@ package ui
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/gdamore/tcell"
 	"github.com/kanopeld/go-socket"
@@ -143,6 +144,14 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		tview.NewTextView().SetText(""),             // players list
 	}
 
+	// engine: car race animation
+	const carSign = `
+.-'---\._
+'-O---O--'`
+
+	carWi := tview.NewTextView().SetText(carSign)
+	carWi.SetBorder(true)
+
 	renderPlayers := func() {
 		// log.Println(len(players))
 		ps := ""
@@ -155,14 +164,29 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		}
 		sort.Strings(keys)
 
+		_, _, trackWidth, _ := carWi.GetRect()
+		if trackWidth == 15 {
+			trackWidth = 40
+		}
+		drawtext := "Player:"
 		for _, k := range keys {
 			p := players[k]
 			ps += p.Nickname + ": " + strconv.Itoa(p.Progress) + "%\n"
 
+			step := strings.Repeat(" ", p.Progress*(trackWidth-24)/100)
+			cs := strings.Replace(carSign, "\n", "\n        "+step, 1)
+			nickname := fmt.Sprintf("%-8s", p.Nickname)
+			cs = strings.Replace(cs, "_\n", "_\n"+nickname+step, 1)
+			drawtext += cs
+			padding := strings.Repeat(" ", trackWidth-18-len(step)-8)
+			drawtext += padding
+			drawtext += fmt.Sprintf("%2s", strconv.Itoa(p.WPM)) + " wpm\n"
+			drawtext += strings.Repeat("▔", trackWidth-2)
 		}
 		app.QueueUpdateDraw(func() {
 			statsWis[2].SetText(fmt.Sprintf("Num: %d", len(players)))
 			statsWis[4].SetText(ps)
+			carWi.SetText(drawtext)
 		})
 	}
 
@@ -298,6 +322,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		textsLayout.AddItem(textWi, len(textWi.GetText(true)), 1, false)
 	}
 	textsLayout.SetBorder(true)
+	secondColumn.AddItem(carWi, 0, 1, false)
 	secondColumn.AddItem(textsLayout, 0, 3, false)
 	inputWi.SetBorder(true)
 	secondColumn.AddItem(inputWi, 0, 1, true)
