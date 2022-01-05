@@ -24,6 +24,7 @@ func NewServer(port string) (*socket.Server, error) {
 	players := make(Players)
 	game_state := GameState{} // startcntdown, start
 	text := ""
+	numEndPlayers := 0
 	s.On(socket.CONNECTION_NAME, func(c socket.Client) {
 
 		onExit := func() {
@@ -65,18 +66,28 @@ func NewServer(port string) (*socket.Server, error) {
 			c.Broadcast(Progress, jsonString)
 		})
 		c.On(EndGame, func() {
-			go func() {
-				ticker := time.NewTicker(1000 * time.Millisecond)
-				start_cnt_down_end := time.Now()
-				for range ticker.C {
-					if int(time.Since(start_cnt_down_end).Seconds()) > 10 {
-						ticker.Stop()
-						c.Emit(EndGame, nil)
-						c.Broadcast(EndGame, nil)
-						return
+			numEndPlayers += 1
+			if numEndPlayers == len(players) {
+				game_state = GameState{}
+				players = make(Players)
+				text = ""
+			} else if numEndPlayers == 1 {
+				go func() {
+					ticker := time.NewTicker(1000 * time.Millisecond)
+					start_cnt_down_end := time.Now()
+					for range ticker.C {
+						if int(time.Since(start_cnt_down_end).Seconds()) > 10 {
+							ticker.Stop()
+							c.Emit(EndGame, nil)
+							c.Broadcast(EndGame, nil)
+							game_state = GameState{}
+							players = make(Players)
+							text = ""
+							return
+						}
 					}
-				}
-			}()
+				}()
+			}
 		})
 		c.On(GetText, func() {
 			if len(players) == 1 {
