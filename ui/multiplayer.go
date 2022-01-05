@@ -66,13 +66,11 @@ func CreateMultiplayerSetup(app *tview.Application) error {
 		}, func(text string) {
 			setup.Nickname = text
 		}).
-		AddButton("BACK", func() {
-			utils.Check(CreateMultiplayerSetup(app))
-		}).
 		AddButton("Enter", func() {
-
 			utils.Check(CreateMultiplayer(app, setup))
-
+		}).
+		AddButton("BACK", func() {
+			utils.Check(CreateWelcome(app))
 		})
 
 	layout := tview.NewFlex().
