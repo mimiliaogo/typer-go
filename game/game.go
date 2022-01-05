@@ -49,3 +49,9 @@ func (p *Players) Add(ID, nickname string) {
 	}
 	(*p)[ID].Nickname = nickname
 }
+
+// GameState holds information about the game (countdownstart, gamestart)
+type GameState struct {
+	CountDownStart bool
+	GameStart bool
+}

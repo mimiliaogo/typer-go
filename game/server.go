@@ -12,6 +12,7 @@ func NewServer(port string) (*socket.Server, error) {
 		return nil, err
 	}
 	players := make(Players)
+	game_state := GameState{false, false}
 
 	s.On(socket.CONNECTION_NAME, func(c socket.Client) {
 		c.On(ChangeName, func(data []byte) {
@@ -39,6 +40,7 @@ func NewServer(port string) (*socket.Server, error) {
 			for ID, p := range players {
 				c.Emit(EnterGame, ID+":"+p.Nickname)
 			}
+			c.Emit(GetGameState, game_state)
 		})
 		c.On(Progress, func(data []byte) {
 			ID, progress := ExtractProgress(string(data))
