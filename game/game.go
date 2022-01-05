@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	"github.com/shilangyu/typer-go/settings"
 )
 
@@ -35,8 +36,8 @@ type Player struct {
 	// Nickname
 	Nickname string `json:"nickname"`
 	// Progress
-	Progress int	`json:"errorCount"`
-	WPM int 		`json:"wpm"`
+	Progress int `json:"errorCount"`
+	WPM      int `json:"wpm"`
 }
 
 // Players is a helper for other players
@@ -52,6 +53,6 @@ func (p *Players) Add(ID, nickname string) {
 
 // GameState holds information about the game (countdownstart, gamestart)
 type GameState struct {
-	StartCountDownTime time.Time 
-	StartTime time.Time
+	StartCountDownTime time.Time
+	StartTime          time.Time
 }

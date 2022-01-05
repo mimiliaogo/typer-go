@@ -1,11 +1,13 @@
 package game
 
 import (
-	"github.com/kanopeld/go-socket"
 	"encoding/json"
+
+	"github.com/kanopeld/go-socket"
+
 	// "strconv"
-	"time"
 	"log"
+	"time"
 )
 
 // NewServer initializes a server that just broadcasts all events
@@ -22,7 +24,7 @@ func NewServer(port string) (*socket.Server, error) {
 		onExit := func() {
 			delete(players, c.ID())
 			c.Broadcast(ExitPlayer, []byte(c.ID()))
-			if (len(players) == 0) {
+			if len(players) == 0 {
 				game_state = GameState{}
 			}
 		}
@@ -36,9 +38,9 @@ func NewServer(port string) (*socket.Server, error) {
 			log.Println(string(jsonString))
 			c.Emit(EnterGame, jsonString)
 			c.Broadcast(EnterGame, jsonString)
-			
+
 			if game_state.StartCountDownTime.IsZero() {
-				if (len(players) >= 2) {
+				if len(players) >= 2 {
 					game_state.StartCountDownTime = time.Now()
 					c.Emit(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
 					c.Broadcast(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
@@ -47,11 +49,12 @@ func NewServer(port string) (*socket.Server, error) {
 				c.Emit(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
 				c.Broadcast(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
 			}
-			
+
 		})
 		c.On(Progress, func(data []byte) {
-			ID, progress := ExtractProgress(string(data))
+			ID, progress, wpm := ExtractProgress(string(data))
 			players[ID].Progress = progress
+			players[ID].WPM = wpm
 			jsonString, _ := json.Marshal(players)
 			c.Emit(Progress, jsonString)
 			c.Broadcast(Progress, jsonString)
