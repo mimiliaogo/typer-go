@@ -126,6 +126,7 @@ func NewServer(port string) (*socket.Server, error) {
 					} else if len(text) < 10 {
 						text = "A wiki is a hypertext publication collaboratively edited and managed by its own audience directly using a web browser."
 					}
+					text = strings.TrimSpace(text)
 
 					c.Emit(GetText, text)
 				})
