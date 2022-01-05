@@ -71,6 +71,7 @@ func NewServer(port string) (*socket.Server, error) {
 				game_state = GameState{}
 				players = make(Players)
 				text = ""
+				numEndPlayers = 0
 			} else if numEndPlayers == 1 {
 				go func() {
 					ticker := time.NewTicker(1000 * time.Millisecond)
@@ -83,6 +84,7 @@ func NewServer(port string) (*socket.Server, error) {
 							game_state = GameState{}
 							players = make(Players)
 							text = ""
+							numEndPlayers = 0
 							return
 						}
 					}
@@ -117,6 +119,8 @@ func NewServer(port string) (*socket.Server, error) {
 					re = regexp.MustCompile("[ ]{2,}")
 					text = re.ReplaceAllLiteralString(t, " ")
 					text = strings.Replace(text, "\n", " ", -1)
+					text = strings.Replace(text, "[", " ", -1)
+					text = strings.Replace(text, "]", " ", -1)
 					c.Emit(GetText, text)
 				})
 				col.Visit("https://en.wikipedia.org/wiki/Special:Random")

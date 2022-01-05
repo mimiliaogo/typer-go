@@ -52,7 +52,7 @@ func CreateMultiplayerConnection(app *tview.Application, setup setup) error {
 // CreateMultiplayerRoom creates multiplayer room
 func CreateMultiplayerSetup(app *tview.Application) error {
 	const maxNicknameLength int = 6
-	IP := "127.0.0.1"
+	IP := "140.114.89.109" // "127.0.0.1"
 	setup := setup{IP, "", "9001", false, nil, nil}
 
 	// build connection
