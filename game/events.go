@@ -26,6 +26,8 @@ const (
 	GetGameState = "get-game-state"
 	//mimi
 	StartCountDown = "start-cnt-down"
+	// mimi
+	GetText = "get-game-text"
 )
 
 // Events is an array of all available events

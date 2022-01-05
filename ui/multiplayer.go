@@ -325,6 +325,39 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		}
 	}
 
+	setup.Client.Emit(game.GetText, nil)
+	setup.Client.On(game.GetText, func(text string) {
+		words := strings.Split(text, " ")
+		for i := range words[:len(words)-1] {
+			words[i] += " "
+		}
+		state.Words = words
+
+		textWis = nil
+		for _, word := range state.Words {
+			textWis = append(textWis, tview.NewTextView().SetText(word).SetDynamicColors(true))
+		}
+
+		_, _, secondColumnWidth, _ := secondColumn.GetRect()
+		var textLines []*tview.Flex
+		textLines = append(textLines, tview.NewFlex())
+		curLine := 0
+		curTextWidth := 0
+		for _, textWi := range textWis {
+			textLen := len(textWi.GetText(true))
+			if curTextWidth+textLen > secondColumnWidth-2 {
+				textsLayout.AddItem(textLines[curLine], 1, 1, false)
+				curTextWidth = 0
+				curLine += 1
+				textLines = append(textLines, tview.NewFlex())
+			}
+			textLines[curLine].AddItem(textWi, textLen, 1, false)
+			curTextWidth += textLen
+		}
+		textsLayout.AddItem(textLines[curLine], 1, 1, false)
+		renderPlayers()
+	})
+
 	layout.AddItem(tview.NewBox().SetBorder(false), 0, 1, false) // left margin
 	secondColumn.AddItem(statsFrame, 9, 1, false)
 	secondColumn.AddItem(carWi, 0, 3, false)

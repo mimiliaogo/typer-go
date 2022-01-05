@@ -2,7 +2,12 @@ package game
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
 
+	"github.com/antchfx/htmlquery"
+	"github.com/gocolly/colly"
 	"github.com/kanopeld/go-socket"
 
 	// "strconv"
@@ -18,7 +23,7 @@ func NewServer(port string) (*socket.Server, error) {
 	}
 	players := make(Players)
 	game_state := GameState{} // startcntdown, start
-
+	text := ""
 	s.On(socket.CONNECTION_NAME, func(c socket.Client) {
 
 		onExit := func() {
@@ -72,6 +77,42 @@ func NewServer(port string) (*socket.Server, error) {
 					}
 				}
 			}()
+		})
+		c.On(GetText, func() {
+			if len(players) == 1 {
+
+				col := colly.NewCollector()
+
+				col.OnRequest(func(r *colly.Request) {
+					fmt.Println("Visiting", r.URL.String())
+				})
+
+				col.OnResponse(func(r *colly.Response) {
+					doc, err := htmlquery.Parse(strings.NewReader(string(r.Body)))
+					if err != nil {
+						log.Fatal(err)
+					}
+					// nodes := htmlquery.FindOne(doc, `//*[@id="mw-content-text"]/div[1]/p[2]`)
+					nodes := htmlquery.FindOne(doc, `//*[@id="mw-content-text"]/div[1]/p[1]`)
+					s := htmlquery.InnerText(nodes)
+					fmt.Println(s)
+
+					// remove non ascii
+					re := regexp.MustCompile("[[:^ascii:]]")
+					t := re.ReplaceAllLiteralString(s, "")
+					fmt.Println(t)
+
+					// remove consecutive spaces
+					re = regexp.MustCompile("[ ]{2,}")
+					text = re.ReplaceAllLiteralString(t, " ")
+					text = strings.Replace(text, "\n", " ", -1)
+					c.Emit(GetText, text)
+				})
+				col.Visit("https://en.wikipedia.org/wiki/Special:Random")
+
+			} else {
+				c.Emit(GetText, text)
+			}
 		})
 	})
 
