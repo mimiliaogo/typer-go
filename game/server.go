@@ -121,6 +121,12 @@ func NewServer(port string) (*socket.Server, error) {
 					text = strings.Replace(text, "\n", " ", -1)
 					text = strings.Replace(text, "[", " ", -1)
 					text = strings.Replace(text, "]", " ", -1)
+					if len(text) > 200 {
+						text = text[:200]
+					} else if len(text) < 10 {
+						text = "A wiki is a hypertext publication collaboratively edited and managed by its own audience directly using a web browser."
+					}
+
 					c.Emit(GetText, text)
 				})
 				col.Visit("https://en.wikipedia.org/wiki/Special:Random")
