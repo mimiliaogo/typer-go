@@ -10,7 +10,6 @@ import (
 	"github.com/shilangyu/typer-go/game"
 	"github.com/shilangyu/typer-go/utils"
 
-	// "log"
 	"fmt"
 	"strconv"
 	"time"
@@ -154,7 +153,9 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 	carWi.SetBorder(false).SetBorderPadding(1, 1, 1, 1)
 
 	renderPlayers := func() {
-		// log.Println(len(players))
+		// _, _, w, _ := carWi.GetRect()
+		// log.Println("renderPlayers", w)
+
 		ps := ""
 		// TODO: sort players by progress
 
@@ -165,6 +166,7 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		}
 		sort.Strings(keys)
 
+		// engine TODO: [bug] cannot get correct width first
 		_, _, trackWidth, _ := carWi.GetRect()
 		if trackWidth == 15 {
 			trackWidth = 40
@@ -332,11 +334,26 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 	*/
 
 	secondColumn := tview.NewFlex().SetDirection(tview.FlexRow)
-	textsLayout := tview.NewFlex()
-	for _, textWi := range textWis {
-		textsLayout.AddItem(textWi, len(textWi.GetText(true)), 1, false)
-	}
+
+	textsLayout := tview.NewFlex().SetDirection(tview.FlexRow)
 	textsLayout.SetBorder(true)
+
+	// _, _, secondColumnWidth, _ := secondColumn.GetRect()
+	var textLines []*tview.Flex
+	textLines = append(textLines, tview.NewFlex())
+	curLine := 0
+	curTextWidth := 0
+	for _, textWi := range textWis {
+		textLen := len(textWi.GetText(true))
+		textLines[curLine].AddItem(textWi, textLen, 1, false)
+		curTextWidth += textLen
+		if curTextWidth > 70 {
+			textsLayout.AddItem(textLines[curLine], 1, 1, false)
+			curTextWidth = 0
+			curLine += 1
+			textLines = append(textLines, tview.NewFlex())
+		}
+	}
 
 	layout.AddItem(tview.NewBox().SetBorder(false), 0, 1, false) // left margin
 	secondColumn.AddItem(statsFrame, 9, 1, false)
