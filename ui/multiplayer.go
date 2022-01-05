@@ -6,10 +6,11 @@ import (
 	"github.com/shilangyu/typer-go/game"
 	"github.com/shilangyu/typer-go/utils"
 	"github.com/gdamore/tcell"
-	// "log"
+	"log"
 	"strconv"
 	"fmt"
 	"time"
+	"encoding/json"
 )
 
 type setup struct {
@@ -21,13 +22,11 @@ type setup struct {
 }
 
 // CreateMultiplayerSetup creates multiplayer room
-func CreateMultiplayerSetup(app *tview.Application) error {
-	IP, _ := utils.IPv4()
+func CreateMultiplayerConnection(app *tview.Application, setup setup) error {
+	// IP, _ := utils.IPv4()
 	// mimi local
-	IP = "127.0.0.1"
-	setup := setup{IP, "", "9001", true, nil, nil}
-
-	keybindings(app, CreateWelcome)
+	// IP = "127.0.0.1"
+	// setup := setup{IP, "", "9001", true, nil, nil}
 
 	// [mimi] NO UI
 	c, err := socket.NewDial(setup.RoomIP + ":" + setup.Port)
@@ -42,15 +41,22 @@ func CreateMultiplayerSetup(app *tview.Application) error {
 	} else {
 		setup.Client = c
 	}
-	utils.Check(CreateMultiplayerRoom(app, setup))
+	// utils.Check(CreateMultiplayer(app, setup))
 
 	return nil
 }
 
 // CreateMultiplayerRoom creates multiplayer room
-func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
+func CreateMultiplayerSetup(app *tview.Application) error {
 	const maxNicknameLength int = 6
+	IP := "127.0.0.1"
+	setup := setup{IP, "", "9001", false, nil, nil}
 	
+	// build connection
+	c, err := socket.NewDial(setup.RoomIP + ":" + setup.Port)
+	utils.Check(err)
+	setup.Client = c
+
 
 	formWi := tview.NewForm().
 		AddInputField("Nickname", setup.Nickname, 20, func(textToCheck string, lastChar rune) bool {
@@ -64,7 +70,9 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 			utils.Check(CreateMultiplayerSetup(app))
 		}).
 		AddButton("Enter", func() {
+
 			utils.Check(CreateMultiplayer(app, setup))
+
 		})
 
 	layout := tview.NewFlex().
@@ -85,6 +93,7 @@ func CreateMultiplayerRoom(app *tview.Application, setup setup) error {
 }
 
 func CreateMultiplayer(app *tview.Application, setup setup) error {
+	
 	
 	// [TODO] : socket
 	text, err := game.ChooseText()
@@ -148,38 +157,37 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		}
 	}
 	
-	// setup.Client.On(game.GetGameState, func(state GameState) {
-		
-	// }) 
-	setup.Client.On(game.EnterGame, func(payload string) {
-		ID, nickname := game.ExtractChangeName(payload)
-		players.Add(ID, nickname)
+
+	setup.Client.On(game.EnterGame, func(_players []byte) {
+		// ID, nickname := game.ExtractChangeName(payload)
+		// players.Add(ID, nickname)
+		json.Unmarshal(_players, &players)
 		renderPlayers()
-		// server emit state info
-		// check player number
-		if (len(players) >= 2) {
-			if state.StartCountDownTime.IsZero() {
-				state.StartCountDownTime = time.Now()
-				go func() {
-					ticker_cnt := time.NewTicker(1000 * time.Millisecond)
-					for range ticker_cnt.C {
-						if int(time.Since(state.StartCountDownTime).Seconds()) > 10 { // start game
-							ticker_cnt.Stop()
-							startGame()
-							return
-						}
-						app.QueueUpdateDraw(func() {
-							statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10 - int(time.Since(state.StartCountDownTime).Seconds())))
-						})
+
+	})
+	setup.Client.On(game.StartCountDown, func(payload string) {
+		if state.StartCountDownTime.IsZero() {
+			state.StartCountDownTime, _ = time.Parse(time.RFC3339, payload)
+			log.Println("cnt-down", state.StartCountDownTime)
+			go func() {
+				ticker_cnt := time.NewTicker(10 * time.Millisecond)
+				for range ticker_cnt.C {
+					if int(time.Since(state.StartCountDownTime).Seconds()) > 10 { // start game
+						ticker_cnt.Stop()
+						startGame()
+						return
 					}
-				}()
-			}
+					app.QueueUpdateDraw(func() {
+						statsWis[3].SetText(fmt.Sprintf("CntDown: %ds", 10 - int(time.Since(state.StartCountDownTime).Seconds())))
+					})
+				}
+			}()
 		}
 	})
-
+	// emit your information
 	setup.Client.Emit(game.EnterGame, setup.Client.ID()+":"+setup.Nickname)
-	players[setup.Client.ID()] = &game.Player{Nickname: setup.Nickname}
-	renderPlayers()
+	// players[setup.Client.ID()] = &game.Player{Nickname: setup.Nickname}
+	// renderPlayers()
 
 	pages := tview.NewPages().
 		AddPage("modal", tview.NewModal().

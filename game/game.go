@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"github.com/shilangyu/typer-go/settings"
 )
 
@@ -34,9 +33,9 @@ func ChooseText() (string, error) {
 // Player holds information about an outer player
 type Player struct {
 	// Nickname
-	Nickname string
+	Nickname string `json:"nickname"`
 	// Progress
-	Progress int
+	Progress int	`json:"errorCount"`
 }
 
 // Players is a helper for other players
@@ -52,6 +51,6 @@ func (p *Players) Add(ID, nickname string) {
 
 // GameState holds information about the game (countdownstart, gamestart)
 type GameState struct {
-	CountDownStart bool
-	GameStart bool
+	StartCountDownTime time.Time 
+	StartTime time.Time
 }

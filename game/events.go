@@ -24,6 +24,8 @@ const (
 	EndGame = "end-game"
 	// [mimi]
 	GetGameState = "get-game-state"
+	//mimi
+	StartCountDown = "start-cnt-down"
 )
 
 // Events is an array of all available events

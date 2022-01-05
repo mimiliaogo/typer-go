@@ -2,7 +2,10 @@ package game
 
 import (
 	"github.com/kanopeld/go-socket"
+	"encoding/json"
 	// "strconv"
+	"time"
+	"log"
 )
 
 // NewServer initializes a server that just broadcasts all events
@@ -12,35 +15,39 @@ func NewServer(port string) (*socket.Server, error) {
 		return nil, err
 	}
 	players := make(Players)
-	game_state := GameState{false, false}
+	game_state := GameState{} // startcntdown, start
 
 	s.On(socket.CONNECTION_NAME, func(c socket.Client) {
-		c.On(ChangeName, func(data []byte) {
-			ID, nickname := ExtractChangeName(string(data))
-			players.Add(ID, nickname)
-			c.Broadcast(ChangeName, data)
-
-			for ID, p := range players {
-				c.Emit(ChangeName, ID+":"+p.Nickname)
-			}
-		})
 
 		onExit := func() {
 			delete(players, c.ID())
 			c.Broadcast(ExitPlayer, []byte(c.ID()))
+			if (len(players) == 0) {
+				game_state = GameState{}
+			}
 		}
 		c.On(socket.DISCONNECTION_NAME, onExit)
 		c.On(ExitPlayer, onExit)
+
 		c.On(EnterGame, func(data []byte) {
 			ID, nickname := ExtractChangeName(string(data))
 			players.Add(ID, nickname)
-			c.Broadcast(EnterGame, data)
+			jsonString, _ := json.Marshal(players)
+			log.Println(string(jsonString))
+			c.Emit(EnterGame, jsonString)
+			c.Broadcast(EnterGame, jsonString)
 			
-			// mimi send total local player to new player
-			for ID, p := range players {
-				c.Emit(EnterGame, ID+":"+p.Nickname)
+			if game_state.StartCountDownTime.IsZero() {
+				if (len(players) >= 2) {
+					game_state.StartCountDownTime = time.Now()
+					c.Emit(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
+					c.Broadcast(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
+				}
+			} else {
+				c.Emit(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
+				c.Broadcast(StartCountDown, []byte(game_state.StartCountDownTime.Format(time.RFC3339)))
 			}
-			c.Emit(GetGameState, game_state)
+			
 		})
 		c.On(Progress, func(data []byte) {
 			ID, progress := ExtractProgress(string(data))
