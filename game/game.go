@@ -36,6 +36,7 @@ type Player struct {
 	Nickname string `json:"nickname"`
 	// Progress
 	Progress int	`json:"errorCount"`
+	WPM int 		`json:"wpm"`
 }
 
 // Players is a helper for other players

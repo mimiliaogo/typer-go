@@ -52,10 +52,23 @@ func NewServer(port string) (*socket.Server, error) {
 		c.On(Progress, func(data []byte) {
 			ID, progress := ExtractProgress(string(data))
 			players[ID].Progress = progress
-			c.Broadcast(Progress, data)
-			// for ID, p := range players {
-			// 	c.Emit(EnterGame, ID+":"+strconv.Itoa(p.Progress))
-			// }
+			jsonString, _ := json.Marshal(players)
+			c.Emit(Progress, jsonString)
+			c.Broadcast(Progress, jsonString)
+		})
+		c.On(EndGame, func() {
+			go func() {
+				ticker := time.NewTicker(1000 * time.Millisecond)
+				start_cnt_down_end := time.Now()
+				for range ticker.C {
+					if int(time.Since(start_cnt_down_end).Seconds()) > 10 {
+						ticker.Stop()
+						c.Emit(EndGame, nil)
+						c.Broadcast(EndGame, nil)
+						return
+					}
+				}
+			}()
 		})
 	})
 

@@ -6,7 +6,7 @@ import (
 	"github.com/shilangyu/typer-go/game"
 	"github.com/shilangyu/typer-go/utils"
 	"github.com/gdamore/tcell"
-	"log"
+	// "log"
 	"strconv"
 	"fmt"
 	"time"
@@ -63,8 +63,6 @@ func CreateMultiplayerSetup(app *tview.Application) error {
 			return len(textToCheck) <= maxNicknameLength
 		}, func(text string) {
 			setup.Nickname = text
-			// players[setup.Client.ID()].Nickname = setup.Nickname
-			// setup.Client.Emit(game.ChangeName, setup.Client.ID()+":"+setup.Nickname)
 		}).
 		AddButton("BACK", func() {
 			utils.Check(CreateMultiplayerSetup(app))
@@ -113,6 +111,18 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		tview.NewTextView().SetText(""), // players list
 	}
 
+	pages := tview.NewPages().
+		AddPage("modal", tview.NewModal().
+			SetText("Game End").
+			SetBackgroundColor(tcell.ColorDefault).
+			AddButtons([]string{ "exit"}).
+			SetDoneFunc(func(index int, label string) {
+				switch index {
+				case 0:
+					utils.Check(CreateWelcome(app))
+				}
+			}), false, false)
+
 	renderPlayers := func() {
 		// log.Println(len(players))
 		ps := ""
@@ -131,15 +141,15 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		// start game
 		if state.StartTime.IsZero() {
 			state.Start()
-			setup.Client.On(game.Progress, func(payload string) {
-				ID, progress := game.ExtractProgress(payload)
-				players[ID].Progress = progress
-				renderPlayers()
-			})
+			// setup.Client.On(game.Progress, func(payload string) {
+			// 	ID, progress := game.ExtractProgress(payload)
+			// 	players[ID].Progress = progress
+			// 	renderPlayers()
+			// })
 			go func() {
 				ticker := time.NewTicker(100 * time.Millisecond)
 				for range ticker.C {
-					if state.CurrWord == len(state.Words) {
+					if state.CurrWord == len(state.Words) || state.EndGame {
 						ticker.Stop()
 						return
 					}
@@ -150,17 +160,15 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 					
 					// broadcast progress
 					setup.Client.Emit(game.Progress, setup.Client.ID()+":"+strconv.Itoa(int(state.Progress())))
-					players[setup.Client.ID()].Progress = int(state.Progress())
-					renderPlayers()
 				}
 			}()
 		}
 	}
 	
+	// emit your information
+	setup.Client.Emit(game.EnterGame, setup.Client.ID()+":"+setup.Nickname)
 
 	setup.Client.On(game.EnterGame, func(_players []byte) {
-		// ID, nickname := game.ExtractChangeName(payload)
-		// players.Add(ID, nickname)
 		json.Unmarshal(_players, &players)
 		renderPlayers()
 
@@ -168,7 +176,6 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 	setup.Client.On(game.StartCountDown, func(payload string) {
 		if state.StartCountDownTime.IsZero() {
 			state.StartCountDownTime, _ = time.Parse(time.RFC3339, payload)
-			log.Println("cnt-down", state.StartCountDownTime)
 			go func() {
 				ticker_cnt := time.NewTicker(10 * time.Millisecond)
 				for range ticker_cnt.C {
@@ -184,24 +191,19 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 			}()
 		}
 	})
-	// emit your information
-	setup.Client.Emit(game.EnterGame, setup.Client.ID()+":"+setup.Nickname)
-	// players[setup.Client.ID()] = &game.Player{Nickname: setup.Nickname}
-	// renderPlayers()
+	
+	setup.Client.On(game.Progress, func(_players []byte) {
+		json.Unmarshal(_players, &players)
+		renderPlayers()
+	})
 
-	pages := tview.NewPages().
-		AddPage("modal", tview.NewModal().
-			SetText("Play again?").
-			SetBackgroundColor(tcell.ColorDefault).
-			AddButtons([]string{"yes", "exit"}).
-			SetDoneFunc(func(index int, label string) {
-				switch index {
-				case 0:
-					utils.Check(CreateSingleplayer(app))
-				case 1:
-					utils.Check(CreateWelcome(app))
-				}
-			}), false, false)
+	setup.Client.On(game.EndGame, func() {
+		state.End()
+		pages.ShowPage("modal")
+	})
+
+
+	
 	
 	var textWis []*tview.TextView
 	for _, word := range state.Words {
@@ -229,8 +231,9 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 				if text == state.Words[state.CurrWord] {
 					state.NextWord()
 					if state.CurrWord == len(state.Words) {
+						// first 
+						setup.Client.Emit(game.EndGame, nil)
 						state.End()
-
 						pages.ShowPage("modal")
 					} else {
 						inputWi.SetText("")
@@ -238,6 +241,8 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 				}
 
 				currInput = text
+			} else {
+				// no input text
 			}
 		})
 
