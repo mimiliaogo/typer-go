@@ -121,7 +121,6 @@ func NewServer(port string) (*socket.Server, error) {
 					text = strings.Replace(text, "\n", " ", -1)
 					text = strings.Replace(text, "[", " ", -1)
 					text = strings.Replace(text, "]", " ", -1)
-					text = strings.TrimSpace(text)
 					if len(text) > 200 {
 						text = text[:200]
 					} else if len(text) < 10 {
