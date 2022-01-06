@@ -52,7 +52,7 @@ func CreateMultiplayerConnection(app *tview.Application, setup setup) error {
 // CreateMultiplayerRoom creates multiplayer room
 func CreateMultiplayerSetup(app *tview.Application) error {
 	const maxNicknameLength int = 6
-	IP := "140.114.89.109" // "127.0.0.1"
+	IP := "140.114.91.198" // "127.0.0.1"
 	setup := setup{IP, "", "9001", false, nil, nil}
 
 	// build connection
@@ -136,14 +136,16 @@ func CreateMultiplayer(app *tview.Application, setup setup) error {
 		// log.Println("renderPlayers", w)
 
 		ps := ""
-		// TODO: sort players by progress
-
 		// engine: sort players by name
 		keys := make([]string, 0, len(players))
 		for k := range players {
-			keys = append(keys, k)
+			if k != setup.Client.ID() {
+				keys = append(keys, k)
+			}
 		}
 		sort.Strings(keys)
+		// append client car to top track
+		keys = append([]string{setup.Client.ID()}, keys...)
 
 		// engine TODO: [bug] cannot get correct width first
 		_, _, trackWidth, _ := carWi.GetRect()
