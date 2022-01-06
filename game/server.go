@@ -118,9 +118,11 @@ func NewServer(port string) (*socket.Server, error) {
 					// remove consecutive spaces
 					re = regexp.MustCompile("[ ]{2,}")
 					text = re.ReplaceAllLiteralString(t, " ")
+					re = regexp.MustCompile("[()0-9]")
+					text = re.ReplaceAllLiteralString(text, "")
 					text = strings.Replace(text, "\n", " ", -1)
-					text = strings.Replace(text, "[", " ", -1)
-					text = strings.Replace(text, "]", " ", -1)
+					text = strings.Replace(text, "[", "", -1)
+					text = strings.Replace(text, "]", "", -1)
 					if len(text) > 200 {
 						text = text[:200]
 					} else if len(text) < 10 {
